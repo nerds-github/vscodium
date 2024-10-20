@@ -23,7 +23,8 @@ if [[ "${VSCODE_ARCH}" == "ppc64le" ]]; then
   GLIBC_VERSION="2.28"
 elif [[ "${VSCODE_ARCH}" == "riscv64" ]]; then
   # Unofficial RISC-V nodejs builds doesn't provide v16.x
-  NODE_VERSION="18.18.1"
+  # Node 18 is buggy so use 20 here for now: https://github.com/VSCodium/vscodium/issues/2060
+  NODE_VERSION="20.16.0"
 fi
 
 export VSCODE_PLATFORM='linux'
@@ -52,7 +53,7 @@ fi
 
 export VSCODE_REMOTE_DEPENDENCIES_CONTAINER_NAME
 
-sed -i "/target/s/\"20.*\"/\"${NODE_VERSION}\"/" remote/.yarnrc
+sed -i "/target/s/\"20.*\"/\"${NODE_VERSION}\"/" remote/.npmrc
 
 if [[ "${NODE_VERSION}" != 16* ]]; then
   if [[ -f "../patches/linux/reh/node16.patch" ]]; then
@@ -73,12 +74,12 @@ if [[ -d "../patches/linux/reh/" ]]; then
 fi
 
 for i in {1..5}; do # try 5 times
-  yarn --cwd build --frozen-lockfile --check-files && break
+  npm ci --prefix build && break
   if [[ $i == 3 ]]; then
-    echo "Yarn failed too many times" >&2
+    echo "Npm install failed too many times" >&2
     exit 1
   fi
-  echo "Yarn failed $i, trying again..."
+  echo "Npm install failed $i, trying again..."
 done
 
 if [[ "${VSCODE_ARCH}" == "ppc64le" ]]; then
@@ -88,12 +89,12 @@ else
 fi
 
 for i in {1..5}; do # try 5 times
-  yarn --frozen-lockfile --check-files && break
-  if [ $i -eq 3 ]; then
-    echo "Yarn failed too many times" >&2
+  npm ci && break
+  if [[ $i == 3 ]]; then
+    echo "Npm install failed too many times" >&2
     exit 1
   fi
-  echo "Yarn failed $i, trying again..."
+  echo "Npm install failed $i, trying again..."
 done
 
 node build/azure-pipelines/distro/mixin-npm
